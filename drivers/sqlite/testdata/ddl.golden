@@ -1,0 +1,214 @@
+-- create boolean
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL DEFAULT 1
+);
+
+-- create char
+CREATE TABLE "t" (
+  "c" CHAR(2) NOT NULL
+);
+
+-- create string
+CREATE TABLE "t" (
+  "c" VARCHAR(100) NOT NULL DEFAULT 'x'
+);
+
+-- create text
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create mediumText
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create longText
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create tinyText
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create tinyInteger
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create smallInteger
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create mediumInteger
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create integer
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL DEFAULT 0
+);
+
+-- create bigInteger
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create unsignedInteger
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create increments
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL,
+  PRIMARY KEY ("c")
+);
+
+-- create id
+CREATE TABLE "t" (
+  "id" INTEGER NOT NULL,
+  PRIMARY KEY ("id")
+);
+
+-- create decimal
+CREATE TABLE "t" (
+  "c" NUMERIC(10,2) NOT NULL
+);
+
+-- create double
+CREATE TABLE "t" (
+  "c" REAL NOT NULL
+);
+
+-- create float
+CREATE TABLE "t" (
+  "c" REAL NOT NULL
+);
+
+-- create date
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create dateTime
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create dateTimeTz
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create time
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create timestamp
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- create timestampTz
+CREATE TABLE "t" (
+  "c" TEXT NULL
+);
+
+-- create year
+CREATE TABLE "t" (
+  "c" INTEGER NOT NULL
+);
+
+-- create binary
+CREATE TABLE "t" (
+  "c" BLOB NOT NULL
+);
+
+-- create json
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create jsonb
+CREATE TABLE "t" (
+  "c" TEXT NOT NULL
+);
+
+-- create uuid
+CREATE TABLE "t" (
+  "c" CHAR(36) NOT NULL
+);
+
+-- create ulid
+CREATE TABLE "t" (
+  "c" CHAR(26) NOT NULL
+);
+
+-- create enum
+CREATE TABLE "t" (
+  "c" VARCHAR(255) NOT NULL CHECK ("c" IN ('a', 'b'))
+);
+
+-- create set
+ERROR: schema: column "c": sqlite: set type is not natively supported; use a JSON array (TEXT) and application-level validation
+
+-- create macAddress
+CREATE TABLE "t" (
+  "c" VARCHAR(17) NOT NULL
+);
+
+-- create ipAddress
+CREATE TABLE "t" (
+  "c" VARCHAR(45) NOT NULL
+);
+
+-- create geometry
+ERROR: schema: column "c": sqlite: type geometry is not supported without the SpatiaLite extension
+
+-- create vector
+ERROR: schema: column "c": sqlite: vector type is not supported without an extension (e.g. sqlite-vec)
+
+-- create comment
+CREATE TABLE "t" (
+  "c" VARCHAR(255) NOT NULL
+);
+
+-- create foreign key
+CREATE TABLE "t" (
+  "user_id" INTEGER NOT NULL,
+  CONSTRAINT "t_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+);
+
+-- create indexes
+CREATE TABLE "t" (
+  "a" VARCHAR(255) NOT NULL,
+  "b" VARCHAR(255) NOT NULL,
+  CONSTRAINT "t_a_b_unique" UNIQUE ("a", "b")
+);
+CREATE INDEX "t_b_index" ON "t" ("b");
+
+-- alter add, drop, rename
+ALTER TABLE "t" ADD COLUMN "nick" VARCHAR(255) NULL;
+ALTER TABLE "t" DROP COLUMN "old";
+ALTER TABLE "t" RENAME COLUMN "a" TO "b";
+
+-- alter change column
+ERROR: schema: changing column "nick": sqlite: ALTER COLUMN is not supported by SQLite directly (column "nick", table "t"); recreate the table manually (CREATE new -> INSERT SELECT -> DROP old -> RENAME)
+
+-- alter unique in alter
+ALTER TABLE "t" ADD COLUMN "nick" VARCHAR(255) NULL;
+CREATE UNIQUE INDEX "t_nick_unique" ON "t" ("nick");
+CREATE UNIQUE INDEX "t_email_unique" ON "t" ("email");
+
+-- alter foreign key in alter
+ERROR: schema: foreign key "t_team_id_foreign": sqlite: cannot add a foreign key to existing table "t"; declare it in Create or recreate the table
+
+-- alter indexes and keys
+ERROR: schema: foreign key "t_team_id_foreign": sqlite: cannot add a foreign key to existing table "t"; declare it in Create or recreate the table
+

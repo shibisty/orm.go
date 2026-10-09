@@ -1,0 +1,22 @@
+{
+    "name": "orm-dev",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Local workspace of the orm family (ADR-0006, ADR-0009); not committed",
+    "engines": {
+        "go": ">=1.22"
+    },
+    "dependencies": {
+        "faker": "file:../faker.go"
+    },
+    "workspaces": [
+        "core",
+        "drivers/*",
+        "drivers/sqlite/integration",
+        "example",
+        "example/seed"
+    ],
+    "scripts": {
+        "test": "gtr run -r test"
+    }
+}
