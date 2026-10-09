@@ -1,22 +1,14 @@
 {
-    "name": "orm-dev",
-    "version": "0.0.0",
-    "private": true,
-    "description": "Local workspace of the orm family (ADR-0006, ADR-0009); not committed",
+    "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
+    "name": "orm",
+    "version": "0.1.0",
+    "license": "MIT",
+    "repository": "github:shibisty/orm.go",
     "engines": {
         "go": ">=1.22"
     },
-    "dependencies": {
-        "faker": "file:../faker.go"
-    },
-    "workspaces": [
-        "core",
-        "drivers/*",
-        "drivers/sqlite/integration",
-        "example",
-        "example/seed"
-    ],
     "scripts": {
-        "test": "gtr run -r test"
+        "test": "go test ./...",
+        "test:integration": "go test -tags integration ./..."
     }
 }
