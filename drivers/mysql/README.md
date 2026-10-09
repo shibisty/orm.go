@@ -4,6 +4,8 @@ MySQL and MariaDB driver for [`orm`](https://github.com/shibisty/orm.go). Go pac
 
 Dependency: github.com/go-sql-driver/mysql (wired in by the driver itself).
 
+[![Patreon](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/cw/shibisty)
+
 ## Installation
 
 ```bash
@@ -41,3 +43,7 @@ After an intentional DDL change (with the `go` shim, `gtr self shims`): `go test
 ## License
 
 MIT
+
+[![Patreon](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/cw/shibisty)
+
+If this project helps you, consider supporting its development on Patreon ❤️
