@@ -1,4 +1,4 @@
-[submodule "orm.go"]
-	path = orm.go
+[submodule "orm"]
+	path = orm
 	url = https://github.com/shibisty/orm.go.git
 	branch = master
