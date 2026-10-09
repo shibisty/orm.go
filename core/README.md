@@ -4,6 +4,8 @@ A minimalist ORM for Go in the spirit of Laravel Eloquent: one model with `db` t
 and one `Repository[T]` work on MySQL, Postgres, SQLite, MongoDB and Redis.
 Each database driver is a separate package; the core has no external dependencies.
 
+[![Patreon](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/cw/shibisty)
+
 | Package | What it is |
 |---|---|
 | `orm` (this repository) | Core: interfaces, `Query`, `Repository[T]`, the `schema` and `drivertest` subpackages |
@@ -170,3 +172,7 @@ Variables: `ORM_TEST_MYSQL_DSN`, `ORM_TEST_POSTGRES_DSN`, `ORM_TEST_SQLITE_DSN`,
 ## License
 
 MIT
+
+[![Patreon](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/cw/shibisty)
+
+If this project helps you, consider supporting its development on Patreon ❤️
