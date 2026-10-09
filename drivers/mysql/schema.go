@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/youruser/goorm/schema"
+	"orm"
+	"orm/schema"
 )
 
-// ---- schema.Dialect: DDL для MySQL ----
+// ---- schema.Dialect: DDL for MySQL ----
 
 func (d Dialect) ColumnSQL(col *schema.Column) (string, error) {
 	typeSQL, err := mysqlColumnType(col)
@@ -76,8 +77,8 @@ func (d Dialect) DropIndexSQL(table string, indexName string) string {
 	return fmt.Sprintf("ALTER TABLE %s DROP INDEX %s", d.Quote(table), d.Quote(indexName))
 }
 
-func (d Dialect) DropForeignKeySQL(table string, fkName string) string {
-	return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s", d.Quote(table), d.Quote(fkName))
+func (d Dialect) DropForeignKeySQL(table string, fkName string) (string, error) {
+	return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s", d.Quote(table), d.Quote(fkName)), nil
 }
 
 func (d Dialect) ForeignKeyClause(fk *schema.ForeignKey) string {
@@ -96,7 +97,7 @@ func (d Dialect) ForeignKeyClause(fk *schema.ForeignKey) string {
 	return clause
 }
 
-// ---- маппинг типов ----
+// ---- type mapping ----
 
 func isMySQLNumeric(t schema.ColumnType) bool {
 	switch t {
@@ -156,7 +157,7 @@ func mysqlColumnType(col *schema.Column) (string, error) {
 	case schema.TypeBinary:
 		return "BLOB", nil
 	case schema.TypeJSON, schema.TypeJSONB:
-		return "JSON", nil // у MySQL нет отдельного JSONB — JSON и есть двоичный, документируем в README
+		return "JSON", nil // MySQL has no separate JSONB: JSON is already binary; documented in the README
 
 	case schema.TypeUUID:
 		return "CHAR(36)", nil
@@ -164,7 +165,7 @@ func mysqlColumnType(col *schema.Column) (string, error) {
 		return "CHAR(26)", nil
 
 	case schema.TypeGeometry, schema.TypeGeography:
-		return "GEOMETRY", nil // MySQL не различает geometry/geography — оба маппятся в GEOMETRY
+		return "GEOMETRY", nil // MySQL does not distinguish geometry/geography; both map to GEOMETRY
 
 	case schema.TypeEnum:
 		return "ENUM(" + quotedList(col.Values) + ")", nil
@@ -176,10 +177,10 @@ func mysqlColumnType(col *schema.Column) (string, error) {
 		return "VARCHAR(45)", nil
 
 	case schema.TypeVector:
-		return "", fmt.Errorf("mysql: тип vector не поддерживается стандартным MySQL")
+		return "", fmt.Errorf("mysql: vector type is not supported by standard MySQL")
 
 	default:
-		return "", fmt.Errorf("mysql: неизвестный тип колонки %q", col.Type)
+		return "", fmt.Errorf("mysql: unknown column type %q", col.Type)
 	}
 }
 
@@ -227,3 +228,9 @@ func mysqlLiteral(col *schema.Column) string {
 		return quoteLiteral(fmt.Sprint(v))
 	}
 }
+
+// Compile-time check: Dialect implements both interfaces.
+var (
+	_ schema.Dialect = Dialect{}
+	_ orm.Dialect    = Dialect{}
+)
