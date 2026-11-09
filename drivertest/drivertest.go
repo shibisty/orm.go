@@ -112,6 +112,17 @@ func SQLWith(t *testing.T, conn interface {
 		queries(ctx, t, conn)
 	})
 
+	t.Run("Relations, timestamps, soft deletes", func(t *testing.T) {
+		reset(t)
+		createRelationTables(ctx, t, sb)
+		t.Cleanup(func() {
+			for _, tbl := range []string{pivotTable, postsTable, tagsTable} {
+				_ = sb.DropIfExists(context.Background(), tbl)
+			}
+		})
+		relations(ctx, t, conn)
+	})
+
 	t.Run("Create keeps an id set by the application", func(t *testing.T) {
 		reset(t)
 		repo := orm.NewRepository[User](conn)
@@ -301,7 +312,8 @@ func queries(ctx context.Context, t *testing.T, qe orm.QueryExecutor) {
 }
 
 // NoSQL runs the Repository and Query checks for drivers without SQL
-// (mongodb, redis). reset must clear the drivertest_users collection/keys.
+// (mongodb, redis). reset must clear every table (collection, keys) in
+// Tables.
 func NoSQL(t *testing.T, qe orm.QueryExecutor, reset func(t *testing.T)) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -316,6 +328,33 @@ func NoSQL(t *testing.T, qe orm.QueryExecutor, reset func(t *testing.T)) {
 	t.Run("Query where order limit", func(t *testing.T) {
 		reset(t)
 		queries(ctx, t, qe)
+	})
+	t.Run("Relations, timestamps, soft deletes", func(t *testing.T) {
+		reset(t)
+		relations(ctx, t, qe)
+	})
+	t.Run("An id set by the application moves the counter", func(t *testing.T) {
+		reset(t)
+		repo := orm.NewRepository[User](qe)
+		fixed := User{Name: "fixed", Email: "f@x"}
+		fixed.ID = 3
+		if err := repo.Create(ctx, &fixed); err != nil || fixed.ID != 3 {
+			t.Fatalf("Create(id=3): %v (id %d)", err, fixed.ID)
+		}
+		seen := map[int64]bool{3: true}
+		for i := 0; i < 4; i++ {
+			u := User{Name: fmt.Sprint("auto", i), Email: "a@x"}
+			if err := repo.Create(ctx, &u); err != nil {
+				t.Fatal(err)
+			}
+			if seen[u.ID] {
+				t.Fatalf("auto id %d reused", u.ID)
+			}
+			seen[u.ID] = true
+		}
+		if got, err := repo.Find(ctx, 3); err != nil || got.Name != "fixed" {
+			t.Fatalf("Find(3) = %+v, %v", got, err)
+		}
 	})
 }
 
