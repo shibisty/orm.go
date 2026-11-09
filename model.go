@@ -90,7 +90,10 @@ func (r *Repository[T]) Create(ctx context.Context, entity *T) error {
 		}
 		v.FieldByIndex(mi.columns["updated_at"]).Set(reflect.ValueOf(now))
 	}
-	values := mi.values(v, true)
+	values, err := mi.values(v, true)
+	if err != nil {
+		return err
+	}
 	if id, ok := mi.keyOf(v); ok {
 		if gen, ok := r.exec.(IDGenerator); ok && isZeroValue(id) {
 			mi.setKey(v, gen.NewID())
@@ -126,7 +129,10 @@ func (r *Repository[T]) Update(ctx context.Context, entity *T) error {
 	if mi.timestamps {
 		v.FieldByIndex(mi.columns["updated_at"]).Set(reflect.ValueOf(Now()))
 	}
-	values := mi.values(v, true)
+	values, err := mi.values(v, true)
+	if err != nil {
+		return err
+	}
 	if mi.timestamps {
 		delete(values, "created_at")
 	}
@@ -195,7 +201,16 @@ func (r *Repository[T]) Restore(ctx context.Context, id any) error {
 }
 
 // values are the columns of a struct value; skipKey leaves out the key.
-func (mi *modelInfo) values(v reflect.Value, skipKey bool) map[string]any {
+func (mi *modelInfo) values(v reflect.Value, skipKey bool) (map[string]any, error) {
+	if p := planOf(v.Type()); p.err != nil {
+		return nil, p.err
+	} else if p.mapper {
+		out := v.Addr().Interface().(Mapper).OrmValues()
+		if skipKey {
+			delete(out, mi.key)
+		}
+		return out, nil
+	}
 	out := make(map[string]any, len(mi.columns))
 	for col, path := range mi.columns {
 		if skipKey && col == mi.key {
@@ -203,30 +218,15 @@ func (mi *modelInfo) values(v reflect.Value, skipKey bool) map[string]any {
 		}
 		out[col] = v.FieldByIndex(path).Interface()
 	}
-	return out
+	return out, nil
 }
 
 // ---- reflection helpers ----
 
 func scanRowInto(row Row, dest any) error {
-	v := reflect.ValueOf(dest).Elem()
-	t := v.Type()
-
-	var scanTargets []any
-	var walk func(rv reflect.Value, rt reflect.Type)
-	walk = func(rv reflect.Value, rt reflect.Type) {
-		for i := 0; i < rt.NumField(); i++ {
-			f := rt.Field(i)
-			if f.Anonymous && f.Type.Kind() == reflect.Struct {
-				walk(rv.Field(i), f.Type)
-				continue
-			}
-			if !f.IsExported() || f.Tag.Get("db") == "" || f.Tag.Get("db") == "-" {
-				continue
-			}
-			scanTargets = append(scanTargets, rv.Field(i).Addr().Interface())
-		}
+	targets, err := scanTargets(dest)
+	if err != nil {
+		return err
 	}
-	walk(v, t)
-	return row.Scan(scanTargets...)
+	return row.Scan(targets...)
 }

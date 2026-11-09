@@ -17,7 +17,7 @@ func FillStruct(dest any, m map[string]any) error {
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("orm: FillStruct expects a pointer to a struct, got %T", dest)
 	}
-	return fillStructValue(v.Elem(), m)
+	return fillValue(v.Elem(), m)
 }
 
 // FillSlice fills dest (a pointer to a slice of structs) with values from maps.
@@ -27,44 +27,16 @@ func FillSlice(dest any, maps []map[string]any) error {
 		return fmt.Errorf("orm: FillSlice expects a pointer to a slice, got %T", dest)
 	}
 	sliceVal := v.Elem()
-	elemType := sliceVal.Type().Elem()
-
-	out := reflect.MakeSlice(sliceVal.Type(), 0, len(maps))
-	for _, m := range maps {
-		itemPtr := reflect.New(elemType)
-		if err := fillStructValue(itemPtr.Elem(), m); err != nil {
+	if sliceVal.Type().Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("orm: FillSlice expects a pointer to a slice of structs, got %T", dest)
+	}
+	out := reflect.MakeSlice(sliceVal.Type(), len(maps), len(maps))
+	for i, m := range maps {
+		if err := fillValue(out.Index(i), m); err != nil {
 			return err
 		}
-		out = reflect.Append(out, itemPtr.Elem())
 	}
 	sliceVal.Set(out)
-	return nil
-}
-
-func fillStructValue(v reflect.Value, m map[string]any) error {
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		if field.Anonymous && field.Type.Kind() == reflect.Struct {
-			if err := fillStructValue(v.Field(i), m); err != nil {
-				return err
-			}
-			continue
-		}
-
-		tag := field.Tag.Get("db")
-		if tag == "" || tag == "-" {
-			continue
-		}
-		raw, ok := m[tag]
-		if !ok || raw == nil {
-			continue
-		}
-		if err := assignValue(v.Field(i), raw); err != nil {
-			return fmt.Errorf("orm: field %q (db:%q): %w", field.Name, tag, err)
-		}
-	}
 	return nil
 }
 

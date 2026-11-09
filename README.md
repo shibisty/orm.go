@@ -219,6 +219,29 @@ plugs orm in as a backend and gives each migration a transaction and a `Schema`.
 - Pluralization in `Constrained()`/`ForeignIDFor()` is naive: `company` → `companies`,
   but not `person` → `people` — pass the table explicitly.
 
+## Speed: generated mappers
+
+The orm maps structs by reflection, computed once per type. For hot paths,
+[orm-gen](https://github.com/shibisty/orm.go-gen) generates `orm.Mapper` methods so that rows
+and documents are mapped without reflection:
+
+```go
+//go:generate go run orm-gen
+```
+
+The models do not change, and work the same with or without the generated file. If a field is
+added and the mappers are not regenerated, the orm returns an error on first use instead of
+scanning into the wrong fields.
+
+Benchmarks (`go test -run '^$' -bench . -benchmem`, 10 columns, in-memory driver):
+
+| Benchmark | Reflection | Generated |
+|---|---|---|
+| `Repository.All`, 100 rows | 46 µs | 26 µs |
+| `Repository.Find` | 4.7 µs | 4.3 µs |
+| `FillSlice`, 100 documents | 79 µs | 49 µs |
+| `Repository.Create` | 6.0 µs | 5.6 µs |
+
 ## NoSQL: what is emulated
 
 - **MongoDB**: `WHERE` → filter, `JOIN` → `$lookup` + `$unwind`, auto-increment
