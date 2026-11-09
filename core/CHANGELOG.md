@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1 — 2026-11-09
+
 ### Added
 - `orm.ErrNotSupported`: a driver lacks a capability (transactions in ClickHouse).
 - `orm.IDGenerator`: drivers of databases without auto-increment generate the id of a new
