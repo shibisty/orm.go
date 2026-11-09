@@ -59,17 +59,21 @@ func (a *sqlQueryExecutor) Select(ctx context.Context, q *Query, dest any) error
 		}
 		defer rows.Close()
 
-		elemType := v.Elem().Type().Elem()
-		out := reflect.MakeSlice(v.Elem().Type(), 0, 0)
+		// Rows are scanned in place into a growing slice: no per-row copy.
+		out := reflect.New(v.Elem().Type()).Elem()
 		for rows.Next() {
-			itemPtr := reflect.New(elemType)
-			if err := scanRowInto(rows, itemPtr.Interface()); err != nil {
+			n := out.Len()
+			out.Grow(1)
+			out.SetLen(n + 1)
+			if err := scanRowInto(rows, out.Index(n).Addr().Interface()); err != nil {
 				return err
 			}
-			out = reflect.Append(out, itemPtr.Elem())
 		}
 		if err := rows.Err(); err != nil {
 			return err
+		}
+		if out.IsNil() {
+			out = reflect.MakeSlice(out.Type(), 0, 0) // no rows: empty, not nil
 		}
 		v.Elem().Set(out)
 		return nil
@@ -118,18 +122,7 @@ func isSelectAll(cols []string) bool {
 // dbColumns returns the columns from the db tags in the same order in which
 // scanRowInto scans them (embedded structs recursively).
 func dbColumns(t reflect.Type) []string {
-	var out []string
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-		if f.Anonymous && f.Type.Kind() == reflect.Struct {
-			out = append(out, dbColumns(f.Type)...)
-			continue
-		}
-		if tag := f.Tag.Get("db"); f.IsExported() && tag != "" && tag != "-" {
-			out = append(out, tag)
-		}
-	}
-	return out
+	return append([]string(nil), planOf(t).cols...)
 }
 
 // Count runs SELECT COUNT(*) FROM (<the query>) AS orm_count (Counter):
