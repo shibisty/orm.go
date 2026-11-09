@@ -7,6 +7,9 @@ import (
 )
 
 func compileCreate(d Dialect, bp *Blueprint, ifNotExists bool) ([]string, error) {
+	if cd, ok := d.(CreateTableDialect); ok {
+		return cd.CreateTableSQL(bp, ifNotExists)
+	}
 	var defs []string
 	var primaryCols []string
 	var uniqueSingleCols []string
@@ -173,5 +176,8 @@ func compileDropIfExists(d Dialect, table string) []string {
 }
 
 func compileRename(d Dialect, from, to string) []string {
+	if rd, ok := d.(RenameTableDialect); ok {
+		return []string{rd.RenameTableSQL(from, to)}
+	}
 	return []string{fmt.Sprintf("ALTER TABLE %s RENAME TO %s", d.Quote(from), d.Quote(to))}
 }

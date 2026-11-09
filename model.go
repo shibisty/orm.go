@@ -56,18 +56,39 @@ func (r *Repository[T]) All(ctx context.Context, q *Query) ([]T, error) {
 	return out, nil
 }
 
+// IDGenerator is implemented by drivers whose database does not assign ids
+// (ClickHouse has no auto-increment): Repository.Create asks it for the id of
+// a new record whose id is zero.
+type IDGenerator interface {
+	NewID() int64
+}
+
 // Create inserts a new record; fields are taken from the `db` struct tags.
+// The id column is left to the database (auto-increment) when the entity's
+// id is zero, unless the driver generates ids (IDGenerator); an id set by
+// the application is inserted as is.
 func (r *Repository[T]) Create(ctx context.Context, entity *T) error {
 	values, err := structToValues(entity, true /*skipID*/)
 	if err != nil {
 		return err
+	}
+	if id, err := getID(entity); err == nil {
+		if gen, ok := r.exec.(IDGenerator); ok && id == 0 {
+			id = gen.NewID()
+			setID(entity, id)
+		}
+		if id != 0 {
+			values["id"] = id
+		}
 	}
 	q := &Query{Table: r.table, Values: values}
 	res, err := r.exec.Insert(ctx, q)
 	if err != nil {
 		return err
 	}
-	setID(entity, res.LastInsertID)
+	if res.LastInsertID != 0 {
+		setID(entity, res.LastInsertID)
+	}
 	return nil
 }
 
