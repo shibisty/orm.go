@@ -130,10 +130,17 @@ type Index struct {
 	Name    string
 	Columns []string
 	Type    IndexType
+	// Algorithm is a dialect-specific index kind: a data-skipping index
+	// type on ClickHouse ("minmax", "set(100)", "bloom_filter"); "" is the
+	// dialect's default.
+	Algorithm string
 }
 
 // As sets an explicit index name (by default it is generated from the column names).
 func (idx *Index) As(name string) *Index { idx.Name = name; return idx }
+
+// Using sets the index kind (Index.Algorithm).
+func (idx *Index) Using(algorithm string) *Index { idx.Algorithm = algorithm; return idx }
 
 // ForeignKey is a foreign key definition.
 type ForeignKey struct {
@@ -221,6 +228,20 @@ type Dialect interface {
 	// key on its own (SQLite: only by recreating the table).
 	DropForeignKeySQL(table string, fkName string) (string, error)
 	ForeignKeyClause(fk *ForeignKey) string
+}
+
+// CreateTableDialect is an optional Dialect extension for databases whose
+// CREATE TABLE does not follow the common shape (ClickHouse: ENGINE and
+// ORDER BY, indexes inside the column list, no constraints). If the dialect
+// implements it, Create(...) uses it instead of the generic compiler.
+type CreateTableDialect interface {
+	CreateTableSQL(bp *Blueprint, ifNotExists bool) ([]string, error)
+}
+
+// RenameTableDialect is an optional Dialect extension for databases without
+// ALTER TABLE ... RENAME TO (ClickHouse: RENAME TABLE a TO b).
+type RenameTableDialect interface {
+	RenameTableSQL(from, to string) string
 }
 
 // AlterConstraintDialect is an optional Dialect extension for databases where

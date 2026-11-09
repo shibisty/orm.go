@@ -29,6 +29,24 @@ type Blueprint struct {
 	DropTable         bool
 	DropTableIfExists bool
 	RenameTo          string
+
+	// Options are dialect-specific table settings (Option); dialects that
+	// do not know a key ignore it.
+	Options map[string]string
+}
+
+// Option sets a dialect-specific table setting. ClickHouse reads "engine"
+// (default MergeTree), "order_by" (default the primary key), "partition_by",
+// "primary_key", "ttl" and "settings":
+//
+//	b.Option("engine", "ReplacingMergeTree(updated_at)")
+//	b.Option("partition_by", "toYYYYMM(created_at)")
+func (bp *Blueprint) Option(key, value string) *Blueprint {
+	if bp.Options == nil {
+		bp.Options = map[string]string{}
+	}
+	bp.Options[key] = value
+	return bp
 }
 
 func newBlueprint(table string, act action) *Blueprint {
