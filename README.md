@@ -91,6 +91,92 @@ Full example: [`orm.go/example`](../example/main.go) in the local workspace.
 `table.column` names are quoted part by part: `"users"."id"`.
 `INSERT`/`UPDATE` columns are emitted in alphabetical order, so the same data always produces the same SQL.
 
+## Typed queries: `Builder[T]`
+
+`repo.Query()`, `repo.Where(...)`, `repo.With(...)` (or `orm.Q[T](conn)`) start a typed
+query that ends in a result:
+
+```go
+posts := orm.NewRepository[Post](conn)
+
+list, err := posts.Where("published", "=", true).
+    WhereGroup(func(g *orm.Query) { g.Where("lang", "=", "en").OrWhere("lang", "=", "uk") }).
+    WhereNotNull("cover").
+    Scope(Recent).               // func Recent(q *orm.Query) { q.Where("created_at", ">", weekAgo) }
+    With("author", "comments.user").
+    OrderByDesc("id").
+    Get(ctx)                     // []Post
+
+p, err := posts.Query().Find(ctx, 7)          // *Post, orm.ErrNotFound
+first, err := posts.Where("slug", "=", s).First(ctx)
+n, err := posts.Where("draft", "=", true).Count(ctx)
+page, err := posts.Query().Latest().Paginate(ctx, 2, 20) // Items, Total, Page, PerPage, LastPage
+err = posts.Query().Chunk(ctx, 500, func(batch []Post) error { ... })
+_, err = posts.Where("draft", "=", true).Update(ctx, map[string]any{"draft": false})
+_, err = posts.Where("spam", "=", true).Delete(ctx)
+```
+
+`WhereGroup`/`OrWhereGroup` put conditions in parentheses; AND binds tighter than OR, on
+every driver. A scope is any `func(*orm.Query)`, so one scope serves every model.
+
+## Models: keys, timestamps, soft deletes, hooks
+
+```go
+type Post struct {
+    orm.BaseModel       // ID int64 `db:"id"`
+    orm.Timestamps      // CreatedAt, UpdatedAt: set by Create and Update
+    orm.SoftDeletes     // DeletedAt *time.Time: Delete sets it
+    AuthorID int64  `db:"author_id"`
+    Title    string `db:"title"`
+}
+```
+
+- **Keys.** The primary key is the `db:"id"` field of any type (`int64`, `string`, …);
+  `PrimaryKey() string` names another column. A zero key is left to the database (or to
+  the driver: ClickHouse generates ids, `orm.IDGenerator`); a key set by the application
+  is inserted as is. `Find`, `Delete`, `Restore` take the key as `any`.
+- **Timestamps.** With `orm.Timestamps`, `Create` sets `created_at` and `updated_at`,
+  `Update` refreshes `updated_at` (and does not write `created_at`), `Builder.Update` sets
+  `updated_at`. `orm.Now` is the clock (UTC, microseconds); tests may replace it.
+  Schema: `t.Timestamps()`.
+- **Soft deletes.** With `orm.SoftDeletes`, `Delete` sets `deleted_at` and every query skips
+  such records; `WithTrashed()` includes them, `OnlyTrashed()` returns only them,
+  `Restore(ctx, id)` brings one back, `ForceDelete(ctx, id)` removes it. Schema:
+  `t.SoftDeletes()`.
+- **Hooks.** Methods on `*T`: `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate`,
+  `BeforeDelete`, `AfterDelete`, `AfterFind` (all `func(ctx) error`). An error from a
+  `Before` hook cancels the operation. Mass `Builder.Update`/`Delete` do not run hooks.
+
+## Relations
+
+```go
+type User struct {
+    orm.BaseModel
+    TeamID  int64    `db:"team_id"`
+    Posts   []Post   `rel:"posts"`
+    Profile *Profile `rel:"profile"`
+    Team    *Team    `rel:"team"`
+    Roles   []Role   `rel:"roles"`
+}
+
+func (User) Relations() orm.Relations {
+    return orm.Relations{
+        "posts":   orm.HasMany[Post]("user_id"),
+        "profile": orm.HasOne[Profile]("user_id"),
+        "team":    orm.BelongsTo[Team]("team_id"),
+        "roles":   orm.BelongsToMany[Role]("role_user", "user_id", "role_id"),
+    }
+}
+
+users, err := repo.With("posts.comments", "team", "roles").Get(ctx)
+users, err = repo.Query().WithQuery("posts", func(q *orm.Query) { q.Where("published", "=", true) }).Get(ctx)
+```
+
+`With` loads each relation with one query (`WHERE key IN (...)`), nested ones too, so a
+list never makes N+1 queries; it works the same on SQL, MongoDB and Redis. Fields are
+`[]C` or `[]*C` for many, `*C` or `C` for one, and are left out of inserts and updates.
+Soft-deleted related records are skipped.
+
 ## Schema: `schema`
 
 A schema builder in the spirit of Laravel Schema Builder: every column type (numbers,
@@ -139,8 +225,8 @@ plugs orm in as a backend and gives each migration a transaction and a `Schema`.
   `id` → a `counters` collection. `WHERE` with a JOIN applies only to the base collection.
 - **Redis**: a record is JSON under the key `<table>:<id>`, plus a set of the table's ids.
   `Select` is a full scan (O(n)): fine for dev and small tables.
-- Mixing `AND` and `OR` in one query is not allowed on Mongo/Redis — the driver returns
-  an error (`HomogeneousConditions`) instead of applying the wrong precedence.
+- `AND` and `OR` mix with the precedence of SQL on Mongo/Redis too (`orm.SplitOr`), and
+  groups nest.
 - Only SQL drivers support transactions (`SQLExecutor.BeginTx`).
 
 ## Tests

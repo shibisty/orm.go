@@ -29,3 +29,10 @@ type QueryExecutor interface {
 	Update(ctx context.Context, q *Query) (Result, error)
 	Delete(ctx context.Context, q *Query) (Result, error)
 }
+
+// Counter is an optional QueryExecutor extension: the number of records a
+// Query matches (its Limit, Offset and OrderBy are ignored). Builder.Count
+// and Paginate use it; without it they select the records and count them.
+type Counter interface {
+	Count(ctx context.Context, q *Query) (int64, error)
+}
