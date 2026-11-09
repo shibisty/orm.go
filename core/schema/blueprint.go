@@ -197,9 +197,8 @@ func (bp *Blueprint) TimestampsTz(precision ...int) {
 	bp.TimestampTz("updated_at", precision...).Nullable()
 }
 
-// SoftDeletes adds a nullable deleted_at, used together with a
-// "deleted_at IS NULL" check in application-level queries
-// (the Blueprint itself does not build in that logic, just like Laravel).
+// SoftDeletes adds a nullable deleted_at: the column of a model embedding
+// orm.SoftDeletes (Delete sets it, queries skip records that have it).
 func (bp *Blueprint) SoftDeletes(precision ...int) *Column {
 	return bp.Timestamp("deleted_at", precision...).Nullable()
 }

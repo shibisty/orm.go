@@ -2,8 +2,10 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
+	"time"
 )
 
 // Model is the minimal Eloquent-style "model" contract.
@@ -20,40 +22,46 @@ type BaseModel struct {
 
 // Repository is a generic repository for a single model T on top of any
 // QueryExecutor (that is, on top of ANY driver: mysql/postgres/mongodb/redis).
-// It is the counterpart of an Eloquent model: Find, All, Create, Update, Delete.
+// It is the counterpart of an Eloquent model: Find, All, Create, Update,
+// Delete, and Query/Where/With for a typed query (Builder).
 type Repository[T Model] struct {
 	exec  QueryExecutor
 	table string
+	info  *modelInfo
 }
 
 func NewRepository[T Model](exec QueryExecutor) *Repository[T] {
 	var zero T
-	return &Repository[T]{exec: exec, table: zero.TableName()}
+	return &Repository[T]{exec: exec, table: zero.TableName(), info: infoFor[T]()}
 }
 
-// Find looks up a single record by id.
-func (r *Repository[T]) Find(ctx context.Context, id int64) (*T, error) {
-	q := NewQuery(r.table).Where("id", "=", id).LimitOffset(1, 0)
-	var out T
-	if err := r.exec.Select(ctx, q, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
+// Query starts a typed query of the model (soft-deleted records excluded).
+func (r *Repository[T]) Query() *Builder[T] { return newBuilder[T](r.exec) }
+
+// Where starts a typed query with a condition: users.Where("active", "=", true).Get(ctx).
+func (r *Repository[T]) Where(column, op string, value any) *Builder[T] {
+	return r.Query().Where(column, op, value)
+}
+
+// With starts a typed query that eager-loads relations ("posts", "posts.comments").
+func (r *Repository[T]) With(relations ...string) *Builder[T] { return r.Query().With(relations...) }
+
+// Find looks up a single record by its primary key; ErrNotFound if there is
+// none (or it is soft-deleted).
+func (r *Repository[T]) Find(ctx context.Context, id any) (*T, error) {
+	return r.Query().Find(ctx, id)
 }
 
 // All returns all records matching the Query conditions.
-// If q == nil, it returns all records in the table.
+// If q == nil, it returns all records in the table. Soft-deleted records are
+// excluded; Query().WithTrashed() includes them.
 func (r *Repository[T]) All(ctx context.Context, q *Query) ([]T, error) {
-	if q == nil {
-		q = NewQuery(r.table)
-	} else {
-		q.Table = r.table
+	b := r.Query()
+	if q != nil {
+		b.q = q.Clone()
+		b.q.Table = r.table
 	}
-	var out []T
-	if err := r.exec.Select(ctx, q, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return b.Get(ctx)
 }
 
 // IDGenerator is implemented by drivers whose database does not assign ids
@@ -64,94 +72,141 @@ type IDGenerator interface {
 }
 
 // Create inserts a new record; fields are taken from the `db` struct tags.
-// The id column is left to the database (auto-increment) when the entity's
-// id is zero, unless the driver generates ids (IDGenerator); an id set by
-// the application is inserted as is.
+// The key is left to the database (auto-increment) when the entity's key is
+// zero, unless the driver generates ids (IDGenerator); a key set by the
+// application is inserted as is. With Timestamps, CreatedAt and UpdatedAt
+// are set. BeforeCreate and AfterCreate hooks run around the insert.
 func (r *Repository[T]) Create(ctx context.Context, entity *T) error {
-	values, err := structToValues(entity, true /*skipID*/)
-	if err != nil {
+	if err := callHook(entity, ctx, BeforeCreator.BeforeCreate); err != nil {
 		return err
 	}
-	if id, err := getID(entity); err == nil {
-		if gen, ok := r.exec.(IDGenerator); ok && id == 0 {
-			id = gen.NewID()
-			setID(entity, id)
+	v := reflect.ValueOf(entity).Elem()
+	mi := r.info
+	if mi.timestamps {
+		now := Now()
+		ts := v.FieldByIndex(mi.columns["created_at"])
+		if ts.Interface().(time.Time).IsZero() {
+			ts.Set(reflect.ValueOf(now))
 		}
-		if id != 0 {
-			values["id"] = id
+		v.FieldByIndex(mi.columns["updated_at"]).Set(reflect.ValueOf(now))
+	}
+	values := mi.values(v, true)
+	if id, ok := mi.keyOf(v); ok {
+		if gen, ok := r.exec.(IDGenerator); ok && isZeroValue(id) {
+			mi.setKey(v, gen.NewID())
+			id, _ = mi.keyOf(v)
+		}
+		if !isZeroValue(id) {
+			values[mi.key] = id
 		}
 	}
-	q := &Query{Table: r.table, Values: values}
-	res, err := r.exec.Insert(ctx, q)
+	res, err := r.exec.Insert(ctx, &Query{Table: r.table, Values: values, Key: mi.key})
 	if err != nil {
 		return err
 	}
 	if res.LastInsertID != 0 {
-		setID(entity, res.LastInsertID)
+		mi.setKey(v, res.LastInsertID)
 	}
-	return nil
+	return callHook(entity, ctx, AfterCreator.AfterCreate)
 }
 
-// Update updates a record by its ID.
+// Update writes every column of the record by its primary key (created_at
+// is kept). With Timestamps, UpdatedAt is refreshed. BeforeUpdate and
+// AfterUpdate hooks run around it.
 func (r *Repository[T]) Update(ctx context.Context, entity *T) error {
-	id, err := getID(entity)
-	if err != nil {
+	if err := callHook(entity, ctx, BeforeUpdater.BeforeUpdate); err != nil {
 		return err
 	}
-	values, err := structToValues(entity, true)
-	if err != nil {
-		return err
+	v := reflect.ValueOf(entity).Elem()
+	mi := r.info
+	id, ok := mi.keyOf(v)
+	if !ok {
+		return fmt.Errorf("orm: model %s has no field tagged db:%q", v.Type(), mi.key)
+	}
+	if mi.timestamps {
+		v.FieldByIndex(mi.columns["updated_at"]).Set(reflect.ValueOf(Now()))
+	}
+	values := mi.values(v, true)
+	if mi.timestamps {
+		delete(values, "created_at")
+	}
+	if mi.softDelete { // Delete and Restore change it; a stale entity must not
+		delete(values, "deleted_at")
 	}
 	q := &Query{Table: r.table, Values: values}
-	q.Where("id", "=", id)
-	_, err = r.exec.Update(ctx, q)
+	q.Where(mi.key, "=", id)
+	if _, err := r.exec.Update(ctx, q); err != nil {
+		return err
+	}
+	return callHook(entity, ctx, AfterUpdater.AfterUpdate)
+}
+
+// Delete deletes a record by primary key; with SoftDeletes it sets
+// deleted_at instead. If the model has BeforeDelete or AfterDelete hooks,
+// the record is loaded first (deleting a missing record is not an error).
+func (r *Repository[T]) Delete(ctx context.Context, id any) error {
+	return r.delete(ctx, id, false)
+}
+
+// ForceDelete removes a record even if the model uses SoftDeletes.
+func (r *Repository[T]) ForceDelete(ctx context.Context, id any) error {
+	return r.delete(ctx, id, true)
+}
+
+func (r *Repository[T]) delete(ctx context.Context, id any, force bool) error {
+	var entity *T
+	var probe T
+	_, before := any(&probe).(BeforeDeleter)
+	_, after := any(&probe).(AfterDeleter)
+	if before || after {
+		e, err := r.Query().WithTrashed().Find(ctx, id)
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		entity = e
+		if err := callHook(entity, ctx, BeforeDeleter.BeforeDelete); err != nil {
+			return err
+		}
+	}
+	b := r.Query().Where(r.info.key, "=", id)
+	var err error
+	if force {
+		_, err = b.WithTrashed().ForceDelete(ctx)
+	} else {
+		_, err = b.Delete(ctx) // an already deleted record keeps its deleted_at
+	}
+	if err != nil || entity == nil {
+		return err
+	}
+	if r.info.softDelete && !force {
+		now := Now()
+		reflect.ValueOf(entity).Elem().FieldByIndex(r.info.columns["deleted_at"]).Set(reflect.ValueOf(&now))
+	}
+	return callHook(entity, ctx, AfterDeleter.AfterDelete)
+}
+
+// Restore clears deleted_at of a soft-deleted record.
+func (r *Repository[T]) Restore(ctx context.Context, id any) error {
+	_, err := r.Query().OnlyTrashed().Where(r.info.key, "=", id).Restore(ctx)
 	return err
 }
 
-// Delete deletes a record by ID.
-func (r *Repository[T]) Delete(ctx context.Context, id int64) error {
-	q := NewQuery(r.table).Where("id", "=", id)
-	_, err := r.exec.Delete(ctx, q)
-	return err
+// values are the columns of a struct value; skipKey leaves out the key.
+func (mi *modelInfo) values(v reflect.Value, skipKey bool) map[string]any {
+	out := make(map[string]any, len(mi.columns))
+	for col, path := range mi.columns {
+		if skipKey && col == mi.key {
+			continue
+		}
+		out[col] = v.FieldByIndex(path).Interface()
+	}
+	return out
 }
 
 // ---- reflection helpers ----
-
-func structToValues(entity any, skipID bool) (map[string]any, error) {
-	v := reflect.ValueOf(entity)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("orm: entity must be a struct, got %s", v.Kind())
-	}
-
-	values := map[string]any{}
-	collectFields(v, skipID, values)
-	return values, nil
-}
-
-func collectFields(v reflect.Value, skipID bool, out map[string]any) {
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-
-		// Embedded BaseModel/anonymous struct: walk it recursively.
-		if field.Anonymous {
-			collectFields(v.Field(i), skipID, out)
-			continue
-		}
-
-		tag := field.Tag.Get("db")
-		if tag == "" || tag == "-" {
-			continue
-		}
-		if skipID && tag == "id" {
-			continue
-		}
-		out[tag] = v.Field(i).Interface()
-	}
-}
 
 func scanRowInto(row Row, dest any) error {
 	v := reflect.ValueOf(dest).Elem()
@@ -162,11 +217,11 @@ func scanRowInto(row Row, dest any) error {
 	walk = func(rv reflect.Value, rt reflect.Type) {
 		for i := 0; i < rt.NumField(); i++ {
 			f := rt.Field(i)
-			if f.Anonymous {
+			if f.Anonymous && f.Type.Kind() == reflect.Struct {
 				walk(rv.Field(i), f.Type)
 				continue
 			}
-			if f.Tag.Get("db") == "" || f.Tag.Get("db") == "-" {
+			if !f.IsExported() || f.Tag.Get("db") == "" || f.Tag.Get("db") == "-" {
 				continue
 			}
 			scanTargets = append(scanTargets, rv.Field(i).Addr().Interface())
@@ -174,38 +229,4 @@ func scanRowInto(row Row, dest any) error {
 	}
 	walk(v, t)
 	return row.Scan(scanTargets...)
-}
-
-func setID(entity any, id int64) {
-	v := reflect.ValueOf(entity).Elem()
-	f := findFieldByTag(v, "id")
-	if f.IsValid() && f.CanSet() && f.Kind() == reflect.Int64 {
-		f.SetInt(id)
-	}
-}
-
-func getID(entity any) (int64, error) {
-	v := reflect.ValueOf(entity).Elem()
-	f := findFieldByTag(v, "id")
-	if !f.IsValid() {
-		return 0, fmt.Errorf("orm: model has no field tagged db:\"id\"")
-	}
-	return f.Int(), nil
-}
-
-func findFieldByTag(v reflect.Value, tag string) reflect.Value {
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		if field.Anonymous {
-			if f := findFieldByTag(v.Field(i), tag); f.IsValid() {
-				return f
-			}
-			continue
-		}
-		if field.Tag.Get("db") == tag {
-			return v.Field(i)
-		}
-	}
-	return reflect.Value{}
 }
