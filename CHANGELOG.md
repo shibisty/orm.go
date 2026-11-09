@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-09
+
 ### Added
 - `Builder[T]`, a typed query: `repo.Query()`, `repo.Where(...)`, `repo.With(...)`,
   `orm.Q[T](exec)`; `Where`, `OrWhere`, `WhereIn`, `WhereNotIn`, `WhereNull`,
