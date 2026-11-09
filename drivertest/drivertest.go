@@ -44,12 +44,28 @@ func (User) TableName() string { return table }
 
 const table = "drivertest_users"
 
+// Options turn off checks for capabilities a database does not have. Each
+// skipped capability must instead fail with orm.ErrNotSupported (checked).
+type Options struct {
+	NoTransactions bool // BeginTx returns orm.ErrNotSupported (ClickHouse)
+	NoUnique       bool // unique constraints are a schema error (ClickHouse)
+}
+
 // SQL runs all checks for a driver that implements orm.SQLExecutor and
 // orm.QueryExecutor (like mysql.Conn, postgres.Conn, sqlite.Conn).
 func SQL(t *testing.T, conn interface {
 	orm.SQLExecutor
 	orm.QueryExecutor
 }) {
+	t.Helper()
+	SQLWith(t, conn, Options{})
+}
+
+// SQLWith is SQL for a database without some capabilities.
+func SQLWith(t *testing.T, conn interface {
+	orm.SQLExecutor
+	orm.QueryExecutor
+}, opts Options) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -70,7 +86,11 @@ func SQL(t *testing.T, conn interface {
 		// Columns in a different order than the User fields, plus an extra note column.
 		err := sb.Create(ctx, table, func(b *schema.Blueprint) {
 			b.ID()
-			b.String("email").Unique()
+			if opts.NoUnique {
+				b.String("email")
+			} else {
+				b.String("email").Unique()
+			}
 			b.String("note").Nullable()
 			b.String("name")
 			b.BigInteger("age").Default(0)
@@ -92,7 +112,26 @@ func SQL(t *testing.T, conn interface {
 		queries(ctx, t, conn)
 	})
 
+	t.Run("Create keeps an id set by the application", func(t *testing.T) {
+		reset(t)
+		repo := orm.NewRepository[User](conn)
+		u := User{Name: "fixed", Email: "fixed@example.com"}
+		u.ID = 4242
+		if err := repo.Create(ctx, &u); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := repo.Find(ctx, 4242); err != nil || got.Name != "fixed" || u.ID != 4242 {
+			t.Fatalf("Find(4242) = %+v, %v (entity id %d)", got, err, u.ID)
+		}
+	})
+
 	t.Run("Unique violation is an error", func(t *testing.T) {
+		if opts.NoUnique {
+			if _, err := sb.SQLForCreate("x", func(b *schema.Blueprint) { b.String("e").Unique() }); err == nil {
+				t.Fatal("NoUnique: a unique column should be a schema error")
+			}
+			t.Skip("unique constraints are not supported")
+		}
 		reset(t)
 		repo := orm.NewRepository[User](conn)
 		a := User{Name: "a", Email: "same@example.com"}
@@ -106,6 +145,12 @@ func SQL(t *testing.T, conn interface {
 	})
 
 	t.Run("Transactions", func(t *testing.T) {
+		if opts.NoTransactions {
+			if _, err := conn.BeginTx(ctx); !errors.Is(err, orm.ErrNotSupported) {
+				t.Fatalf("NoTransactions: BeginTx = %v, want orm.ErrNotSupported", err)
+			}
+			t.Skip("transactions are not supported")
+		}
 		reset(t)
 
 		tx, err := conn.BeginTx(ctx)

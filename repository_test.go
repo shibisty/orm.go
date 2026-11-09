@@ -320,3 +320,47 @@ func TestNew(t *testing.T) {
 		t.Fatalf("New error: %v", err)
 	}
 }
+
+// genExec is a QueryExecutor of a database without auto-increment: it
+// generates ids (orm.IDGenerator), like the ClickHouse driver.
+type genExec struct {
+	orm.QueryExecutor
+	next int64
+}
+
+func (g *genExec) NewID() int64 { g.next++; return g.next }
+
+func TestCreateIDs(t *testing.T) {
+	rec := &recExec{dialect: pgDialect{}}
+	gen := &genExec{QueryExecutor: orm.AsQueryExecutor(rec), next: 99}
+	repo := orm.NewRepository[User](gen)
+	u := User{Name: "a"}
+	if err := repo.Create(ctx, &u); err != nil {
+		t.Fatal(err)
+	}
+	if u.ID != 100 || !strings.Contains(rec.sql[0], `"id"`) {
+		t.Fatalf("generated id %d, sql %q", u.ID, rec.sql[0])
+	}
+
+	// An id set by the application is inserted; auto-increment otherwise.
+	rec = &recExec{dialect: pgDialect{}, lastID: 7}
+	repo = orm.NewRepository[User](orm.AsQueryExecutor(rec))
+	u = User{Name: "b"}
+	u.ID = 42
+	if err := repo.Create(ctx, &u); err != nil || u.ID != 7 && u.ID != 42 || !strings.Contains(rec.sql[0], `"id"`) {
+		t.Fatalf("explicit id: %d %v %q", u.ID, err, rec.sql[0])
+	}
+	rec = &recExec{dialect: pgDialect{}, lastID: 7}
+	repo = orm.NewRepository[User](orm.AsQueryExecutor(rec))
+	u = User{Name: "c"}
+	if err := repo.Create(ctx, &u); err != nil || u.ID != 7 || strings.Contains(rec.sql[0], `"id"`) {
+		t.Fatalf("auto-increment: %d %v %q", u.ID, err, rec.sql[0])
+	}
+	// No id from the database and none generated: the entity keeps 0.
+	rec = &recExec{dialect: pgDialect{}}
+	repo = orm.NewRepository[User](orm.AsQueryExecutor(rec))
+	u = User{Name: "d"}
+	if err := repo.Create(ctx, &u); err != nil || u.ID != 0 {
+		t.Fatalf("no id: %d %v", u.ID, err)
+	}
+}
