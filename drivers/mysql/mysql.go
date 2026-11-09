@@ -12,8 +12,9 @@ import (
 	"context"
 	"database/sql"
 
-	_ "github.com/go-sql-driver/mysql"
 	"orm"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // mysqlDriver is the orm.Driver implementation for MySQL. It is created via Driver(dsn);

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Works with `orm` 0.1 and 0.2 (peer dependency `>=0.1 <0.3`).
+
 ### Breaking
 - Module path is `github.com/shibisty/orm.go-mysql-driver` (was `github.com/youruser/goorm/drivers/mysql`);
   the core is imported as `orm "github.com/shibisty/orm.go"`.

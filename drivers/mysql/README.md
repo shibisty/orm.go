@@ -12,7 +12,7 @@ Dependency: github.com/go-sql-driver/mysql (wired in by the driver itself).
 gtr add github:shibisty/orm.go github:shibisty/orm.go-mysql-driver
 ```
 
-`orm` is a peer dependency (`^0.1`): the application adds it, so all its drivers share one core.
+`orm` is a peer dependency (`>=0.1 <0.3`): the application adds it, so all its drivers share one core.
 
 ## Usage
 
