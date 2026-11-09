@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+### Added
+- `Builder[T]`, a typed query: `repo.Query()`, `repo.Where(...)`, `repo.With(...)`,
+  `orm.Q[T](exec)`; `Where`, `OrWhere`, `WhereIn`, `WhereNotIn`, `WhereNull`,
+  `WhereNotNull`, `WhereGroup`, `OrWhereGroup`, `Select`, `Join`, `OrderBy`, `Latest`,
+  `Limit`, `Offset`, `Scope`; results `Get`, `First`, `Find`, `Count`, `Exists`,
+  `Paginate` (`Page[T]`), `Chunk`; mass `Update`, `Delete`, `ForceDelete`, `Restore`.
+- Relations: `HasMany`, `HasOne`, `BelongsTo`, `BelongsToMany` declared by a model's
+  `Relations()` and loaded into `rel:"..."` fields with `With("posts.comments")` and
+  `WithQuery`, one query per relation on every driver.
+- `orm.Timestamps` (created_at, updated_at) and `orm.SoftDeletes` (deleted_at;
+  `WithTrashed`, `OnlyTrashed`, `Restore`, `ForceDelete`) to embed in models; `orm.Now`.
+- Hooks: `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate`, `BeforeDelete`,
+  `AfterDelete`, `AfterFind`.
+- Primary keys of any type and name (`KeyNamer`: `PrimaryKey() string`).
+- `Query`: condition groups (`Condition.Group`, `WhereGroup`), `IS NULL` / `IS NOT NULL`
+  (`WhereNull`, `orm.IsNullOp`), `Clone`; `orm.SplitOr` for drivers that build filters
+  by hand; `orm.Counter` (`SELECT COUNT(*) FROM (...)` for SQL drivers).
+- `FillStruct` reads times (RFC 3339 strings, `bson.DateTime`) and pointer fields.
+- `drivertest`: relations, timestamps, soft deletes, groups and pagination on a real
+  database (`drivertest.Tables` lists what a NoSQL reset must clear); the suite also runs
+  on an in-memory executor in the core's tests.
+
+### Breaking
+- `Repository.Find` and `Delete` take the key as `any`: calls with an int64 still compile,
+  but a method value or interface typed `func(context.Context, int64)` does not.
+- Embedding a model struct by pointer (`*orm.BaseModel`) panics with an explanation; embed
+  by value. Unexported fields are never read or written.
+
+### Changed
+- `Query.Key` names the key column of an INSERT: the SQL adapter returns it
+  (`RETURNING <key>` on Postgres, any type) and NoSQL drivers fill it from their counter.
+- `Repository.Update` writes neither `created_at` nor `deleted_at`; deleting an already
+  deleted record keeps its `deleted_at`.
+- `Chunk` without an OrderBy pages by key (`key > last`), so the callback may change the
+  batch.
+- `Count`, `Exists` and `Paginate` use `SELECT COUNT(*)` on every SQL driver's connection.
+- `Repository.All` and `Find` skip soft-deleted records of models with `SoftDeletes`.
+
+### Deprecated
+- `HomogeneousConditions`: drivers mix AND and OR with `SplitOr` now.
+
 ## 0.1.1 — 2026-11-09
 
 ### Added

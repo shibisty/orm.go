@@ -7,12 +7,44 @@ import (
 	"strings"
 )
 
-// Condition is a single WHERE condition.
+// Condition is a single WHERE condition, or a parenthesized group of them
+// (Group, with Column and Op empty).
 type Condition struct {
 	Bool   string // "AND" / "OR"
 	Column string
-	Op     string // "=", ">", "<", "IN", "LIKE" ...
+	Op     string // "=", ">", "<", "IN", "LIKE", "IS NULL", "IS NOT NULL" ...
 	Value  any
+	Group  []Condition
+}
+
+// IsNullOp reports whether op is IS NULL or IS NOT NULL (no value).
+func IsNullOp(op string) (isNull, ok bool) {
+	switch strings.ToUpper(strings.Join(strings.Fields(op), " ")) {
+	case "IS NULL":
+		return true, true
+	case "IS NOT NULL":
+		return false, true
+	}
+	return false, false
+}
+
+// SplitOr turns a list of conditions into a disjunction of conjunctions with
+// the precedence of SQL (AND binds tighter than OR): a AND b OR c is
+// [[a b] [c]]. NoSQL drivers build their filters from it; groups are
+// conditions with Group set and are split the same way recursively.
+func SplitOr(conds []Condition) [][]Condition {
+	if len(conds) == 0 {
+		return nil
+	}
+	out := [][]Condition{{conds[0]}}
+	for _, c := range conds[1:] {
+		if strings.EqualFold(c.Bool, "OR") {
+			out = append(out, []Condition{c})
+		} else {
+			out[len(out)-1] = append(out[len(out)-1], c)
+		}
+	}
+	return out
 }
 
 // Join is a single JOIN clause.
@@ -37,6 +69,18 @@ type Query struct {
 
 	// For INSERT/UPDATE
 	Values map[string]any
+
+	// Key is the primary key column of an INSERT ("" is "id"): the column a
+	// driver returns (RETURNING) or fills from its own counter.
+	Key string
+}
+
+// KeyColumn is Key, or "id".
+func (q *Query) KeyColumn() string {
+	if q.Key == "" {
+		return "id"
+	}
+	return q.Key
 }
 
 func NewQuery(table string) *Query {
@@ -56,6 +100,43 @@ func (q *Query) Where(column, op string, value any) *Query {
 func (q *Query) OrWhere(column, op string, value any) *Query {
 	q.Wheres = append(q.Wheres, Condition{Bool: "OR", Column: column, Op: op, Value: value})
 	return q
+}
+
+// WhereNull adds "column IS NULL"; WhereNotNull "column IS NOT NULL".
+func (q *Query) WhereNull(column string) *Query    { return q.Where(column, "IS NULL", nil) }
+func (q *Query) WhereNotNull(column string) *Query { return q.Where(column, "IS NOT NULL", nil) }
+
+// WhereGroup adds conditions in parentheses: q.Where("a", "=", 1).WhereGroup(func(g *Query) {
+// g.Where("b", "=", 2).OrWhere("c", "=", 3) }) is a = 1 AND (b = 2 OR c = 3).
+func (q *Query) WhereGroup(fn func(g *Query)) *Query { return q.group("AND", fn) }
+
+// OrWhereGroup is WhereGroup joined with OR.
+func (q *Query) OrWhereGroup(fn func(g *Query)) *Query { return q.group("OR", fn) }
+
+func (q *Query) group(b string, fn func(g *Query)) *Query {
+	g := &Query{}
+	fn(g)
+	if len(g.Wheres) > 0 {
+		q.Wheres = append(q.Wheres, Condition{Bool: b, Group: g.Wheres})
+	}
+	return q
+}
+
+// Clone copies the query, so changing the copy leaves q as it was.
+func (q *Query) Clone() *Query {
+	c := *q
+	c.Columns = append([]string(nil), q.Columns...)
+	c.Wheres = append([]Condition(nil), q.Wheres...)
+	c.Joins = append([]Join(nil), q.Joins...)
+	c.OrderBy = append([]string(nil), q.OrderBy...)
+	c.GroupBy = append([]string(nil), q.GroupBy...)
+	if q.Values != nil {
+		c.Values = make(map[string]any, len(q.Values))
+		for k, v := range q.Values {
+			c.Values[k] = v
+		}
+	}
+	return &c
 }
 
 func (q *Query) Join(joinType, table, on string) *Query {
@@ -146,6 +227,8 @@ func BuildSelectGeneric(d Dialect, q *Query) (string, []any) {
 	return sql, args
 }
 
+// Deprecated: drivers evaluate mixed AND/OR with SplitOr.
+//
 // HomogeneousConditions reports whether all conditions, starting from the
 // second, use the same logical operator (all AND or all
 // OR). Relational drivers rely on the database's own precedence (AND
@@ -169,12 +252,32 @@ func buildWhere(d Dialect, conds []Condition, startPos int) (string, []any) {
 	if len(conds) == 0 {
 		return "", nil
 	}
-	sql := " WHERE "
+	body, args := buildConditions(d, conds, startPos)
+	return " WHERE " + body, args
+}
+
+func buildConditions(d Dialect, conds []Condition, startPos int) (string, []any) {
+	sql := ""
 	var args []any
 	pos := startPos
 	for i, c := range conds {
 		if i > 0 {
 			sql += " " + c.Bool + " "
+		}
+		if c.Group != nil {
+			inner, innerArgs := buildConditions(d, c.Group, pos)
+			sql += "(" + inner + ")"
+			args = append(args, innerArgs...)
+			pos += len(innerArgs)
+			continue
+		}
+		if isNull, ok := IsNullOp(c.Op); ok {
+			if isNull {
+				sql += QuoteIdent(d, c.Column) + " IS NULL"
+			} else {
+				sql += QuoteIdent(d, c.Column) + " IS NOT NULL"
+			}
+			continue
 		}
 		op := strings.ToUpper(strings.TrimSpace(c.Op))
 		if (op == "IN" || op == "NOT IN") && isList(c.Value) {

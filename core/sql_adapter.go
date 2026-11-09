@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // sqlQueryExecutor implements QueryExecutor on top of any SQLExecutor,
@@ -85,13 +86,21 @@ func (a *sqlQueryExecutor) Select(ctx context.Context, q *Query, dest any) error
 }
 
 func (a *sqlQueryExecutor) Insert(ctx context.Context, q *Query) (Result, error) {
-	sqlText, args := a.exec.Dialect().BuildInsert(q)
-	if r, ok := a.exec.Dialect().(InsertReturningID); ok && r.InsertReturnsID() {
-		var id int64
+	d := a.exec.Dialect()
+	sqlText, args := d.BuildInsert(q)
+	if r, ok := d.(InsertReturningID); ok && r.InsertReturnsID() {
+		if key := q.KeyColumn(); key != "id" { // dialects append RETURNING id
+			sqlText = strings.TrimSuffix(sqlText, " RETURNING id") + " RETURNING " + QuoteIdent(d, key)
+		}
+		var id any
 		if err := a.exec.QueryRowContext(ctx, sqlText, args...).Scan(&id); err != nil {
 			return Result{}, err
 		}
-		return Result{LastInsertID: id, RowsAffected: 1}, nil
+		res := Result{RowsAffected: 1}
+		if n, err := toInt64(id); err == nil { // a string or UUID key is the application's
+			res.LastInsertID = n
+		}
+		return res, nil
 	}
 	return a.exec.ExecContext(ctx, sqlText, args...)
 }
@@ -116,11 +125,28 @@ func dbColumns(t reflect.Type) []string {
 			out = append(out, dbColumns(f.Type)...)
 			continue
 		}
-		if tag := f.Tag.Get("db"); tag != "" && tag != "-" {
+		if tag := f.Tag.Get("db"); f.IsExported() && tag != "" && tag != "-" {
 			out = append(out, tag)
 		}
 	}
 	return out
+}
+
+// Count runs SELECT COUNT(*) FROM (<the query>) AS orm_count (Counter):
+// joins, groups and conditions count as they select.
+func (a *sqlQueryExecutor) Count(ctx context.Context, q *Query) (int64, error) {
+	qc := q.Clone()
+	qc.OrderBy, qc.Limit, qc.Offset = nil, 0, 0
+	if isSelectAll(qc.Columns) {
+		qc.Columns = []string{"*"}
+		if len(qc.Joins) > 0 {
+			qc.Columns = []string{qc.Table + ".*"}
+		}
+	}
+	inner, args := a.exec.Dialect().BuildSelect(qc)
+	var n int64
+	err := a.exec.QueryRowContext(ctx, "SELECT COUNT(*) FROM ("+inner+") AS orm_count", args...).Scan(&n)
+	return n, err
 }
 
 func (a *sqlQueryExecutor) Update(ctx context.Context, q *Query) (Result, error) {
@@ -133,4 +159,7 @@ func (a *sqlQueryExecutor) Delete(ctx context.Context, q *Query) (Result, error)
 	return a.exec.ExecContext(ctx, sqlText, args...)
 }
 
-var _ QueryExecutor = (*sqlQueryExecutor)(nil)
+var (
+	_ QueryExecutor = (*sqlQueryExecutor)(nil)
+	_ Counter       = (*sqlQueryExecutor)(nil)
+)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 )
 
 // FillStruct fills dest (a pointer to a struct with `db:"..."` tags)
@@ -45,7 +46,7 @@ func fillStructValue(v reflect.Value, m map[string]any) error {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 
-		if field.Anonymous {
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
 			if err := fillStructValue(v.Field(i), m); err != nil {
 				return err
 			}
@@ -78,6 +79,22 @@ func assignValue(field reflect.Value, raw any) error {
 	rv := reflect.ValueOf(raw)
 	if rv.Type().AssignableTo(field.Type()) {
 		field.Set(rv)
+		return nil
+	}
+	if field.Kind() == reflect.Ptr { // *time.Time, *string: a value is set through a new pointer
+		p := reflect.New(field.Type().Elem())
+		if err := assignValue(p.Elem(), raw); err != nil {
+			return err
+		}
+		field.Set(p)
+		return nil
+	}
+	if field.Type() == timeType {
+		t, err := toTime(raw)
+		if err != nil {
+			return err
+		}
+		field.Set(reflect.ValueOf(t))
 		return nil
 	}
 
@@ -150,4 +167,20 @@ func toFloat64(raw any) (float64, error) {
 	default:
 		return 0, fmt.Errorf("expected a number, got %T", raw)
 	}
+}
+
+var timeType = reflect.TypeOf(time.Time{})
+
+// toTime reads times as NoSQL drivers return them: RFC 3339 strings (JSON in
+// Redis), time.Time, or a value with a Time() method (bson.DateTime).
+func toTime(raw any) (time.Time, error) {
+	switch v := raw.(type) {
+	case time.Time:
+		return v, nil
+	case string:
+		return time.Parse(time.RFC3339Nano, v)
+	case interface{ Time() time.Time }:
+		return v.Time(), nil
+	}
+	return time.Time{}, fmt.Errorf("expected a time, got %T", raw)
 }
