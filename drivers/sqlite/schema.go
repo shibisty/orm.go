@@ -132,13 +132,18 @@ func sqliteColumnType(col *schema.Column) (string, error) {
 	case schema.TypeDouble, schema.TypeFloat:
 		return "REAL", nil
 
-	case schema.TypeDate, schema.TypeDateTime, schema.TypeTime, schema.TypeTimestamp:
-		// SQLite has no native date/time types; the common convention is
-		// to store them as TEXT in ISO8601 format (SQLite can work with it
-		// via the date()/time()/datetime() functions). WithTZ/Precision are
-		// ignored at the type level; formatting the value is the application's
-		// responsibility.
-		return "TEXT", nil
+	case schema.TypeDate:
+		// SQLite has no date/time storage class: values are ISO 8601 text
+		// (which date()/datetime() understand). The declared type is what
+		// tells the Go drivers (modernc.org/sqlite, mattn/go-sqlite3) to
+		// scan the text back into a time.Time: DATE, DATETIME and TIMESTAMP
+		// are parsed, TEXT is not ("unsupported Scan, storing driver.Value
+		// type string into type *time.Time").
+		return "DATE", nil
+	case schema.TypeDateTime, schema.TypeTimestamp:
+		return "DATETIME", nil
+	case schema.TypeTime:
+		return "TEXT", nil // a time of day has no time.Time form; scan it into a string
 	case schema.TypeYear:
 		return "INTEGER", nil
 

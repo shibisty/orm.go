@@ -92,17 +92,17 @@ CREATE TABLE "t" (
 
 -- create date
 CREATE TABLE "t" (
-  "c" TEXT NOT NULL
+  "c" DATE NOT NULL
 );
 
 -- create dateTime
 CREATE TABLE "t" (
-  "c" TEXT NOT NULL
+  "c" DATETIME NOT NULL
 );
 
 -- create dateTimeTz
 CREATE TABLE "t" (
-  "c" TEXT NOT NULL
+  "c" DATETIME NOT NULL
 );
 
 -- create time
@@ -112,12 +112,12 @@ CREATE TABLE "t" (
 
 -- create timestamp
 CREATE TABLE "t" (
-  "c" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  "c" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- create timestampTz
 CREATE TABLE "t" (
-  "c" TEXT NULL
+  "c" DATETIME NULL
 );
 
 -- create year

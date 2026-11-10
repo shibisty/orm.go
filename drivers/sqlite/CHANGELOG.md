@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+- Date and time columns are declared `DATE` and `DATETIME` (`dateTime`, `timestamp`,
+  `timestamps()`, `softDeletes()`) instead of `TEXT`, so the drivers scan them back into
+  `time.Time`; models with `orm.Timestamps` failed to load with "unsupported Scan, storing
+  driver.Value type string into type *time.Time". `time` columns stay `TEXT`. Existing tables keep
+  their `TEXT` columns: recreate them (or alter the column type) to read them as times.
+
 ### Changed
 - Works with `orm` 0.1 and 0.2 (peer dependency `>=0.1 <0.3`).
 
