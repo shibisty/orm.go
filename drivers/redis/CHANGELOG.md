@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Renamed from `orm-redis` to `@orm/redis` (gtr ADR-0012): `gtr add @orm/redis`, `import "orm/redis"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
+
 ### Added
 - `orm.Counter` (`Count`) for `Builder.Count` and `Paginate`.
 - Conditions: groups (`WhereGroup`), `IS NULL` / `IS NOT NULL` (soft deletes), and AND/OR

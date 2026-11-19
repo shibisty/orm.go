@@ -1,4 +1,4 @@
-# orm-redis
+# @orm/redis
 
 Redis driver for [`orm`](https://github.com/shibisty/orm.go). Go package: `redis`.
 
@@ -7,7 +7,7 @@ Dependency: github.com/redis/go-redis/v9.
 ## Installation
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-redis-driver
+gtr add orm @orm/redis
 ```
 
 `orm` is a peer dependency (`^0.2`): the application adds it, so all its drivers share one core.
@@ -17,7 +17,7 @@ gtr add github:shibisty/orm.go github:shibisty/orm.go-redis-driver
 ```go
 import (
     "orm"
-    redis "orm-redis"
+    redis "orm/redis"
 )
 
 conn, err := orm.New(ctx, redis.Driver("redis://localhost:6379/0"))

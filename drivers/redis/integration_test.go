@@ -11,7 +11,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 	"orm"
-	redis "orm-redis"
+	redis "orm/redis"
 	"orm/drivertest"
 )
 
