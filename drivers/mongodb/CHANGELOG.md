@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-19
+
 ### Changed
 - Renamed from `orm-mongodb` to `@orm/mongodb` (gtr ADR-0012): `gtr add @orm/mongodb`, `import "orm/mongodb"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
 
