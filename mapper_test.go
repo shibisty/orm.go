@@ -8,7 +8,7 @@ import (
 	"orm"
 )
 
-// The orm-gen mappers of genUser behave exactly like reflection on the
+// The orm/gen mappers of genUser behave exactly like reflection on the
 // identical benchUser.
 func TestMapperMatchesReflection(t *testing.T) {
 	rows := benchRows100()[:3]
