@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-19
+
 ### Changed
 - Renamed from `orm-sqlite` to `@orm/sqlite` (gtr ADR-0012): `gtr add @orm/sqlite`, `import "orm/sqlite"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
 
