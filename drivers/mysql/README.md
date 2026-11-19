@@ -1,4 +1,4 @@
-# orm-mysql
+# @orm/mysql
 
 MySQL and MariaDB driver for [`orm`](https://github.com/shibisty/orm.go). Go package: `mysql`.
 
@@ -9,7 +9,7 @@ Dependency: github.com/go-sql-driver/mysql (wired in by the driver itself).
 ## Installation
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-mysql-driver
+gtr add orm @orm/mysql
 ```
 
 `orm` is a peer dependency (`>=0.1 <0.3`): the application adds it, so all its drivers share one core.
@@ -19,7 +19,7 @@ gtr add github:shibisty/orm.go github:shibisty/orm.go-mysql-driver
 ```go
 import (
     "orm"
-    mysql "orm-mysql"
+    mysql "orm/mysql"
 )
 
 conn, err := orm.New(ctx, mysql.Driver("user:pass@tcp(127.0.0.1:3306)/app?parseTime=true"))

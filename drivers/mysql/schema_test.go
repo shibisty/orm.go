@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	mysql "orm-mysql"
+	mysql "orm/mysql"
 	"orm/schema"
 )
 

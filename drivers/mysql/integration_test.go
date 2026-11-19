@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	mysql "orm-mysql"
+	mysql "orm/mysql"
 	"orm/drivertest"
 )
 
