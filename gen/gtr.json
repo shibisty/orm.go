@@ -8,6 +8,7 @@
     "engines": {
         "go": ">=1.22"
     },
+    "dependencies": {},
     "devDependencies": {
         "orm": "^0.2"
     },
