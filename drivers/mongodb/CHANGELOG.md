@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Renamed from `orm-mongodb` to `@orm/mongodb` (gtr ADR-0012): `gtr add @orm/mongodb`, `import "orm/mongodb"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
+
 ### Added
 - `orm.Counter` (`Count`) for `Builder.Count` and `Paginate`.
 - Conditions: groups (`WhereGroup`), `IS NULL` / `IS NOT NULL` (soft deletes), and AND/OR

@@ -1,4 +1,4 @@
-# orm-mongodb
+# @orm/mongodb
 
 MongoDB driver for [`orm`](https://github.com/shibisty/orm.go). Go package: `mongodb`.
 
@@ -7,7 +7,7 @@ Dependency: go.mongodb.org/mongo-driver/v2.
 ## Installation
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-mongodb-driver
+gtr add orm @orm/mongodb
 ```
 
 `orm` is a peer dependency (`^0.2`): the application adds it, so all its drivers share one core.
@@ -17,7 +17,7 @@ gtr add github:shibisty/orm.go github:shibisty/orm.go-mongodb-driver
 ```go
 import (
     "orm"
-    mongodb "orm-mongodb"
+    mongodb "orm/mongodb"
 )
 
 conn, err := orm.New(ctx, mongodb.Driver("mongodb://localhost:27017", "app"))

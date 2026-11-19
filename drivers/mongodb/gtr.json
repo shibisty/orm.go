@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
-    "name": "orm-mongodb",
-    "version": "0.1.0",
+    "name": "@orm/mongodb",
+    "version": "0.2.0",
     "license": "MIT",
     "repository": "github:shibisty/orm.go-mongodb-driver",
     "engines": {
@@ -11,7 +11,7 @@
         "go.mongodb.org/mongo-driver/v2": "~2.0.0"
     },
     "devDependencies": {
-        "orm": "github:shibisty/orm.go"
+        "orm": "^0.2"
     },
     "peerDependencies": {
         "orm": "^0.2"
