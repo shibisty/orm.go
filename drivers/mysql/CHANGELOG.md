@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-19
+
 ### Changed
 - Renamed from `orm-mysql` to `@orm/mysql` (gtr ADR-0012): `gtr add @orm/mysql`, `import "orm/mysql"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
 - Works with `orm` 0.1 and 0.2 (peer dependency `>=0.1 <0.3`).
