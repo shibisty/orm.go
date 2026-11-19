@@ -1,4 +1,4 @@
-# orm-gen
+# @orm/gen
 
 Generates the `orm.Mapper` methods of [orm](https://github.com/shibisty/orm.go) models,
 so that the orm scans rows into them, fills them from documents and reads their values
@@ -13,7 +13,7 @@ for hot paths. With them, `Repository.All` over 100 rows is about 1.8× faster a
 ```json
 {
     "devDependencies": {
-        "orm-gen": "github:shibisty/orm.go-gen"
+        "@orm/gen": "^0.2"
     }
 }
 ```
@@ -29,7 +29,7 @@ Requires orm 0.2.1 or later.
 Add a `go:generate` line to the package with the models and run `go generate`:
 
 ```go
-//go:generate go run orm-gen
+//go:generate go run orm/gen
 
 package models
 
@@ -81,7 +81,7 @@ date ...; run go generate`) instead of scanning into the wrong fields.
 In CI, check that the generated file is current:
 
 ```bash
-go run orm-gen -check
+go run orm/gen -check
 ```
 
 ### Flags

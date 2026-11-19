@@ -1,4 +1,4 @@
-// Package models is the orm-gen test input.
+// Package models is the orm/gen test input.
 package models
 
 import (

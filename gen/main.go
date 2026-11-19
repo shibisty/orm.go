@@ -1,8 +1,8 @@
-// Command orm-gen generates orm.Mapper methods for models, so that the orm
+// Command orm/gen generates orm.Mapper methods for models, so that the orm
 // maps rows and documents to them without reflection.
 //
-//	//go:generate go run orm-gen
-//	//go:generate go run orm-gen -type User,Post -o models_orm.go
+//	//go:generate go run orm/gen
+//	//go:generate go run orm/gen -type User,Post -o models_orm.go
 //
 // Flags:
 //
@@ -29,7 +29,7 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet("orm-gen", flag.ContinueOnError)
+	fs := flag.NewFlagSet("orm/gen", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	types := fs.String("type", "", "comma-separated struct types (default: every struct with db tags)")
 	out := fs.String("o", "", "output file (default orm_gen.go, or orm_gen_test.go with -tests)")
@@ -39,7 +39,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if fs.NArg() > 1 {
-		fmt.Fprintln(stderr, "orm-gen: one package directory at most")
+		fmt.Fprintln(stderr, "orm/gen: one package directory at most")
 		return 2
 	}
 	dir := "."
@@ -72,7 +72,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	if *check {
 		cur, err := os.ReadFile(name)
 		if err != nil || !bytes.Equal(bytes.ReplaceAll(cur, []byte("\r\n"), []byte("\n")), src) {
-			fmt.Fprintf(stderr, "orm-gen: %s is out of date; run go generate\n", name)
+			fmt.Fprintf(stderr, "orm/gen: %s is out of date; run go generate\n", name)
 			return 1
 		}
 		fmt.Fprintf(stdout, "%s is up to date\n", name)
@@ -82,6 +82,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "orm-gen: wrote %s\n", name)
+	fmt.Fprintf(stdout, "orm/gen: wrote %s\n", name)
 	return 0
 }
