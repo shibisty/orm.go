@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- Renamed from `orm-postgres` to `@orm/postgres` (gtr ADR-0012): `gtr add @orm/postgres`, `import "orm/postgres"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
 - Works with `orm` 0.1 and 0.2 (peer dependency `>=0.1 <0.3`).
 
 ### Breaking

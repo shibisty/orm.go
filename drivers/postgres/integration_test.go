@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	postgres "orm-postgres"
+	postgres "orm/postgres"
 	"orm/drivertest"
 )
 

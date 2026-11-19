@@ -1,4 +1,4 @@
-# orm-postgres
+# @orm/postgres
 
 PostgreSQL driver for [`orm`](https://github.com/shibisty/orm.go). Go package: `postgres`.
 
@@ -7,7 +7,7 @@ Dependency: github.com/jackc/pgx/v5 (wired in by the driver itself).
 ## Installation
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-postgres-driver
+gtr add orm @orm/postgres
 ```
 
 `orm` is a peer dependency (`>=0.1 <0.3`): the application adds it, so all its drivers share one core.
@@ -17,7 +17,7 @@ gtr add github:shibisty/orm.go github:shibisty/orm.go-postgres-driver
 ```go
 import (
     "orm"
-    postgres "orm-postgres"
+    postgres "orm/postgres"
 )
 
 conn, err := orm.New(ctx, postgres.Driver("postgres://user:pass@localhost:5432/app?sslmode=disable"))

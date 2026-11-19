@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	postgres "orm-postgres"
+	postgres "orm/postgres"
 	"orm/schema"
 )
 
