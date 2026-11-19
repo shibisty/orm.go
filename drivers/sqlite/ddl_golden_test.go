@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	sqlite "orm-sqlite"
+	sqlite "orm/sqlite"
 	"orm/schema"
 )
 

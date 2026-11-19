@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Renamed from `orm-sqlite` to `@orm/sqlite` (gtr ADR-0012): `gtr add @orm/sqlite`, `import "orm/sqlite"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
+
 ### Fixed
 - Date and time columns are declared `DATE` and `DATETIME` (`dateTime`, `timestamp`,
   `timestamps()`, `softDeletes()`) instead of `TEXT`, so the drivers scan them back into

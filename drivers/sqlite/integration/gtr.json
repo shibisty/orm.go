@@ -8,10 +8,10 @@
     },
     "dependencies": {
         "modernc.org/sqlite": "^1.34.0",
-        "orm-sqlite": "file:.."
+        "@orm/sqlite": "file:.."
     },
     "devDependencies": {
-        "orm": "github:shibisty/orm.go"
+        "orm": "^0.2"
     },
     "scripts": {
         "test": "go test ./...",

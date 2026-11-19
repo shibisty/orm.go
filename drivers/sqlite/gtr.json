@@ -1,14 +1,14 @@
 {
     "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
-    "name": "orm-sqlite",
-    "version": "0.1.0",
+    "name": "@orm/sqlite",
+    "version": "0.2.0",
     "license": "MIT",
     "repository": "github:shibisty/orm.go-sqlite-driver",
     "engines": {
         "go": ">=1.22"
     },
     "devDependencies": {
-        "orm": "github:shibisty/orm.go"
+        "orm": "^0.2"
     },
     "peerDependencies": {
         "orm": ">=0.1 <0.3"

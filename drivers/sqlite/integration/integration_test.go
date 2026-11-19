@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	sqlite "orm-sqlite"
+	sqlite "orm/sqlite"
 	"orm/drivertest"
 
 	// The driver deliberately does not pick a low-level implementation itself (see the package doc);

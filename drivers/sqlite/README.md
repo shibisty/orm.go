@@ -1,4 +1,4 @@
-# orm-sqlite
+# @orm/sqlite
 
 SQLite driver for [`orm`](https://github.com/shibisty/orm.go). Go package: `sqlite`.
 
@@ -7,7 +7,7 @@ Dependency: you choose the low-level driver: `import _ "modernc.org/sqlite"` (pu
 ## Installation
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-sqlite-driver modernc.org/sqlite
+gtr add orm @orm/sqlite modernc.org/sqlite
 ```
 
 `orm` is a peer dependency (`>=0.1 <0.3`). The low-level SQLite implementation is yours to pick
@@ -18,7 +18,7 @@ gtr add github:shibisty/orm.go github:shibisty/orm.go-sqlite-driver modernc.org/
 ```go
 import (
     "orm"
-    sqlite "orm-sqlite"
+    sqlite "orm/sqlite"
 )
 
 conn, err := orm.New(ctx, sqlite.Driver("file:app.db?_pragma=foreign_keys(1)"))
