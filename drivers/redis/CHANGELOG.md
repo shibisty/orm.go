@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-19
+
 ### Changed
 - Renamed from `orm-redis` to `@orm/redis` (gtr ADR-0012): `gtr add @orm/redis`, `import "orm/redis"`; published to the gtr registry. Dependencies on other orm and migration packages are registry ranges instead of `github:` sources.
 
