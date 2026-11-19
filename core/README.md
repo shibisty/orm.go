@@ -9,12 +9,12 @@ Each database driver is a separate package; the core has no external dependencie
 | Package | What it is |
 |---|---|
 | `orm` (this repository) | Core: interfaces, `Query`, `Repository[T]`, the `schema` and `drivertest` subpackages |
-| [`orm-mysql`](https://github.com/shibisty/orm.go-mysql-driver) | MySQL/MariaDB |
-| [`orm-postgres`](https://github.com/shibisty/orm.go-postgres-driver) | PostgreSQL |
-| [`orm-sqlite`](https://github.com/shibisty/orm.go-sqlite-driver) | SQLite |
-| [`orm-mongodb`](https://github.com/shibisty/orm.go-mongodb-driver) | MongoDB |
-| [`orm-redis`](https://github.com/shibisty/orm.go-redis-driver) | Redis |
-| [`migration`](https://github.com/shibisty/migration.go) + [`migration-orm`](https://github.com/shibisty/migration.go-orm-driver) | Migrations (a separate, higher-level package; orm is one of its backends) |
+| [`@orm/mysql`](https://github.com/shibisty/orm.go-mysql-driver) | MySQL/MariaDB |
+| [`@orm/postgres`](https://github.com/shibisty/orm.go-postgres-driver) | PostgreSQL |
+| [`@orm/sqlite`](https://github.com/shibisty/orm.go-sqlite-driver) | SQLite |
+| [`@orm/mongodb`](https://github.com/shibisty/orm.go-mongodb-driver) | MongoDB |
+| [`@orm/redis`](https://github.com/shibisty/orm.go-redis-driver) | Redis |
+| [`migration`](https://github.com/shibisty/migration.go) + [`@migration/orm`](https://github.com/shibisty/migration.go-orm-driver) | Migrations (a separate, higher-level package; orm is one of its backends) |
 
 Requires Go 1.22+.
 
@@ -23,7 +23,7 @@ Requires Go 1.22+.
 With [gtr](https://github.com/shibisty/gtr) (until the gtr registry, by repository):
 
 ```bash
-gtr add github:shibisty/orm.go github:shibisty/orm.go-postgres-driver
+gtr add orm @orm/postgres
 ```
 
 Import as `import "orm"`; drivers have `orm` as a peer dependency, so the application
@@ -34,7 +34,7 @@ adds it too.
 ```go
 import (
     "orm"
-    postgres "orm-postgres"
+    postgres "orm/postgres"
 )
 
 type User struct {
@@ -203,7 +203,7 @@ across the whole schema. `IndexName(table, kind, cols...)`, `DropIndexCols` and 
 build the same names.
 
 Migrations live in a separate package, [`migration`](https://github.com/shibisty/migration.go):
-it does not depend on orm, while [`migration-orm`](https://github.com/shibisty/migration.go-orm-driver)
+it does not depend on orm, while [`@migration/orm`](https://github.com/shibisty/migration.go-orm-driver)
 plugs orm in as a backend and gives each migration a transaction and a `Schema`.
 
 ### Schema limitations
@@ -222,11 +222,11 @@ plugs orm in as a backend and gives each migration a transaction and a `Schema`.
 ## Speed: generated mappers
 
 The orm maps structs by reflection, computed once per type. For hot paths,
-[orm-gen](https://github.com/shibisty/orm.go-gen) generates `orm.Mapper` methods so that rows
+[@orm/gen](https://github.com/shibisty/orm.go-gen) generates `orm.Mapper` methods so that rows
 and documents are mapped without reflection:
 
 ```go
-//go:generate go run orm-gen
+//go:generate go run orm/gen
 ```
 
 The models do not change, and work the same with or without the generated file. If a field is

@@ -11,7 +11,7 @@ import (
 )
 
 // benchUser is mapped by reflection; see genUser in bench_gen_test.go for
-// the same model with orm-gen mappers.
+// the same model with orm/gen mappers.
 type benchUser struct {
 	orm.BaseModel
 	Name   string  `db:"name"`
@@ -26,8 +26,8 @@ type benchUser struct {
 
 func (benchUser) TableName() string { return "users" }
 
-// genUser is benchUser with the mappers orm-gen generates (orm_gen_test.go,
-// regenerated with `go run orm-gen -tests -type genUser` in this directory).
+// genUser is benchUser with the mappers orm/gen generates (orm_gen_test.go,
+// regenerated with `go run orm/gen -tests -type genUser` in this directory).
 type genUser struct {
 	orm.BaseModel
 	Name   string  `db:"name"`
@@ -185,7 +185,7 @@ func newGenUser() *genUser {
 }
 
 // go test -run '^$' -bench . -benchmem: reflection (Reflect) against the
-// orm-gen mappers (Generated).
+// orm/gen mappers (Generated).
 func BenchmarkSelect100(b *testing.B) {
 	b.Run("Reflect", benchSelect[benchUser])
 	b.Run("Generated", benchSelect[genUser])
