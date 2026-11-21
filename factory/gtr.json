@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
     "name": "@orm/factory",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Model factories for orm on faker: Make, Create, State, Sequence, Has, For",
     "license": "MIT",
     "repository": {
