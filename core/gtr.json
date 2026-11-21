@@ -1,7 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
     "name": "orm",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "license": "MIT",
     "repository": {
         "type": "git",
