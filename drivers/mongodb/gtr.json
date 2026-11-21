@@ -3,7 +3,11 @@
     "name": "@orm/mongodb",
     "version": "0.2.0",
     "license": "MIT",
-    "repository": "github:shibisty/orm.go-mongodb-driver",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shibisty/orm.go.git",
+        "directory": "drivers/mongodb"
+    },
     "engines": {
         "go": ">=1.22"
     },

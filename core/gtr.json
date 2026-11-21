@@ -3,7 +3,11 @@
     "name": "orm",
     "version": "0.2.2",
     "license": "MIT",
-    "repository": "github:shibisty/orm.go",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shibisty/orm.go.git",
+        "directory": "core"
+    },
     "engines": {
         "go": ">=1.22"
     },

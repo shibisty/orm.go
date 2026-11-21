@@ -3,7 +3,11 @@
     "name": "@orm/postgres",
     "version": "0.2.0",
     "license": "MIT",
-    "repository": "github:shibisty/orm.go-postgres-driver",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shibisty/orm.go.git",
+        "directory": "drivers/postgres"
+    },
     "engines": {
         "go": ">=1.22"
     },

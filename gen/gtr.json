@@ -4,7 +4,11 @@
     "version": "0.2.0",
     "description": "Generates orm.Mapper methods for orm models: rows and documents mapped without reflection",
     "license": "MIT",
-    "repository": "github:shibisty/orm.go-gen",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shibisty/orm.go.git",
+        "directory": "gen"
+    },
     "engines": {
         "go": ">=1.22"
     },

@@ -3,7 +3,11 @@
     "name": "@orm/mysql",
     "version": "0.2.0",
     "license": "MIT",
-    "repository": "github:shibisty/orm.go-mysql-driver",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shibisty/orm.go.git",
+        "directory": "drivers/mysql"
+    },
     "engines": {
         "go": ">=1.22"
     },

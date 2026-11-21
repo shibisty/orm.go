@@ -1,0 +1,20 @@
+{
+    "$schema": "https://raw.githubusercontent.com/shibisty/gtr/main/schema/gtr.schema.json",
+    "name": "orm-example",
+    "version": "0.0.0",
+    "private": true,
+    "engines": {
+        "go": ">=1.22"
+    },
+    "dependencies": {
+        "orm": "workspace:*",
+        "@orm/mysql": "^0.2",
+        "@orm/postgres": "^0.2",
+        "@orm/redis": "^0.2"
+    },
+    "scripts": {
+        "start": "go run .",
+        "test": "go test ./...",
+        "test:integration": "go test -tags integration ./..."
+    }
+}
